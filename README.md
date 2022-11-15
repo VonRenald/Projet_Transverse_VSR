@@ -1,4 +1,4 @@
-# ProjetTrasverse
+# ProjetTrasverse Brice WEIS
 
 ## install docker
 
