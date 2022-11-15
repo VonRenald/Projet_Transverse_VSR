@@ -1,5 +1,16 @@
 # ProjetTrasverse Brice WEIS
 
+
+## resource 
+[sujet](https://docs.google.com/document/d/11zBVDOXcx6rLfGPptINeEuc0mywJ25OQWXOmVf0NwV4/edit#)
+
+[docker](https://docs.docker.com/engine/)
+
+[TP_Lavinal](https://www.irit.fr/~Emmanuel.Lavinal/cours/VSR/)
+
+[TP](https://moodle.univ-tlse3.fr/pluginfile.php/620348/mod_resource/content/2/M2iLord-virtualization-TPs.pdf)
+
+
 ## install docker
 
 ```
@@ -18,15 +29,35 @@ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o 
 echo \
   "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
   $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+
+sudo apt-get update
+sudo chmod a+r /etc/apt/keyrings/docker.gpg
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
 ```
 
 
 ## Q1
 
+treminal 1:
+
 ```
-mkdir ProjetTrasvrese
-cd ProjetTrasvrese
+python3 worker.py
 ```
-> scp client and worker from host
+
+treminal 2:
+
+```
+python3 client.py
+```
 
 ## Q2
+
+creation dockerfile
+
+
+
+```
+docker image build -t python:3 /home/vm/Projet_Transverse_VSR
+
+```
