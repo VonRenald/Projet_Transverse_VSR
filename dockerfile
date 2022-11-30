@@ -5,7 +5,7 @@ WORKDIR /usr/app/src
 
 COPY worker.py ./
 
-EXPOSE 9090
-EXPOSE 9080
+EXPOSE 9090:9090
+EXPOSE 9080:9080
 
 CMD ["python3", "./worker.py"]

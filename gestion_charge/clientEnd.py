@@ -20,12 +20,6 @@ def send_msg(msg, wait_answer = True):
             response = client.recv(1024)
             print(response)
 
-jobs = [Process(target = send_msg, args = (b'go', ))
-        for _ in range(nb_messages)]
-for j in jobs:
-    j.start()
-    time.sleep(sleeping_time)
-for j in jobs:
-    j.join()
+
 
 send_msg(b'quit', False)
