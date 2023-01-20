@@ -21,6 +21,9 @@ serverW = None
 count = 0
 
 portC = 0
+nexPort = 0
+portSleep = 0
+portInUse = []
 
 nbDock = 1
 next_max = 3
@@ -76,31 +79,45 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         global t1_after_stop_docker
         global t2_after_stop_docker
         global atom
+        global nexPort
+        global portInUse
+        global portSleep
 
         count += 1
         t2_after_stop_docker = time.time()
         data = self.request.recv(1024)
-        ret,delta = send_msg(data,portC+(count%nbDock)+1)
+        ret,delta = send_msg(data,portInUse[count%len(portInUse)])
         delta_Moy.append(delta)
         delta_Moy_calc = sum(delta_Moy)/len(delta_Moy)
         print(delta_Moy_calc)
         if(len(delta_Moy)>5):
             delta_Moy.pop(0)
-        if(delta_Moy_calc > next_max):# and t2_after_stop_docker - t1_after_stop_docker > 60):
-            print(nbDock, next_max,portC+2+nbDock, count)
+        if(delta_Moy_calc > next_max and not atom):# and t2_after_stop_docker - t1_after_stop_docker > 60):
+            atom = True
+            # print(nbDock, next_max,portC+2+nbDock, count)
             
+
             next_max = next_max + 3
-            clientD.containers.run("python:vsr",f'python3 worker.py {portC+2+nbDock}',remove=True, ports={portC+2+nbDock:portC+2+nbDock}, detach=True)
+            print("start Docker")
+            clientD.containers.run("python:vsr",f'python3 worker.py {nexPort}',remove=True, ports={nexPort:nexPort}, detach=True)
+            print("Docker started")
+            portInUse.append(portSleep)
+            portSleep = nexPort
+            nexPort += 1
             nbDock = nbDock + 1
-            print(nbDock, next_max,portC+2+nbDock, count)
+            # print(nbDock, next_max,portC+2+nbDock, count)
+            atom = False
             
         if( delta_Moy_calc < (next_max - 5) and nbDock >= 2 and not atom):
             atom = True
+            print("stop Docker")
             next_max = next_max - 3
             docker_list = clientD.containers.list(ignore_removed = True)
             clientD.api.stop( docker_list[0].id, timeout= None)
+            portSleep = portInUse[len(portInUse)-1]
+            portInUse.pop(len(portInUse)-1)
             nbDock = nbDock - 1
-            print("remove Docker")
+            print("Docker closed")
             # t1_after_stop_docker = t2_after_stop_docker
             atom = False
         
@@ -116,7 +133,9 @@ def main():
     global server
     global portC
     global clientD
-
+    global nexPort
+    global portSleep
+    global portInUse
 
     sem_init()
     
@@ -128,6 +147,9 @@ def main():
     except:
         portC = 9090
     clientD = docker.from_env()
+    nexPort = portC + 3
+    portSleep = portC + 2
+    portInUse.append(portC+1)
     print(portC)
     print(f'python3 worker.py {portC+1}')
     clientD.containers.run("python:vsr",f'python3 worker.py {portC+1}',remove=True, ports={portC+1:portC+1}, detach=True)
