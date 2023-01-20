@@ -9,6 +9,7 @@ from multiprocessing import Semaphore
 from multiprocessing import Process
 
 sem = None
+server = None
 
 def read_int(filename, default):
     try:
@@ -39,9 +40,13 @@ def sem_init():
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
 
     def handle(self):
+        global server
         data = self.request.recv(1024)
         print(data)
         if data == b'quit':
+            
+            server.shutdown()            
+            server.socket.close()
             os._exit(0)
         else:
             work()
@@ -51,6 +56,7 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
     pass
 
 def main():
+    global server
     print("run worker",flush=True)
     sem_init()
 
@@ -58,8 +64,9 @@ def main():
         port = int(sys.argv[1])
     except:
         port = 9090
-        
+    
     server = ThreadedTCPServer(('0.0.0.0', port), ThreadedTCPRequestHandler)
+    server.socket.settimeout(1)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

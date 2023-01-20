@@ -22,49 +22,32 @@ count = 0
 
 portC = 0
 
-portW = 9091
 nbDock = 1
 next_max = 3
 
-try:
-    portC = int(sys.argv[1])
-except:
-    portC = 9090
+clientD = None
 
-clientD = docker.from_env()
-print(portW)
-print(f'python3 worker.py {portW}')
-clientD.containers.run("python:worker",f'python3 worker.py {portC+1}',remove=True, ports={portC+1:portC+1}, detach=True)
-clientD.containers.run("python:worker",f'python3 worker.py {portC+2}',remove=True, ports={portC+2:portC+2}, detach=True)
+delta_Moy = [0]
 
-# client.containers.run("python:worker",'python3 worker.py 9095',remove=True, ports={9095:9095}, detach=True)
-# client.containers.run("python:worker",'python3 worker.py 9098',remove=True, ports={9098:9098}, detach=True)
+t2_after_stop_docker = time.time()
+t1_after_stop_docker = t2_after_stop_docker - 60
 
-# subprocess.run("docker run --rm -p 9090:9090 python:worker ",stdout=subprocess.PIPE)
-# subprocess.run("docker run --rm -p 9095:9090 python:worker ",stdout=subprocess.PIPE)
-# subprocess.run("docker run --rm -p 9098:9090 python:worker ",stdout=subprocess.PIPE)
+atom = False
 
-
-# subprocess.run(["ls"],stdout=subprocess.PIPE)
-def send_msg(msg, port,  nbDock, next_max, portC, clientD, wait_answer = True):
+def send_msg(msg, port, wait_answer = True):
     
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
+
         client.connect(('127.0.0.1',port))
         t1 = time.time()
         client.send(msg)
         if wait_answer:
             response = client.recv(1024)
             t2 = time.time()
-            print("return in ",t2-t1,"- ",end=' ')
-            print(response)
-            print(next_max,nbDock,next_max)
-            if(t2-t1 > next_max):
-                print("new docker")
-                clientD.containers.run("python:worker",f'python3 worker.py {portC+2+nbDock}',remove=True, ports={portC+2+nbDock:portC+2+nbDock}, detach=True)
-                nbDock+=1
-                next_max+=3
-            return response,nbDock,next_max
-    return None,nbDock,next_max
+            print("return in ",t2-t1,"\t- ",response,end=' ')
+            delta = t2-t1 
+            return response, delta
+    return None, 0
 
 def read_int(filename, default):
     try:
@@ -72,17 +55,6 @@ def read_int(filename, default):
             return int(f.read())
     except:
         return default
-
-# def work():
-#     global sem
-#     with sem:
-#         print('start working', os.getpid());
-#         time.sleep(.5)
-#         print('end working', os.getpid());
-
-# def manage_request():
-#     global sem
-#     Process(target = work, args=()).start()
 
 def sem_init():
     global sem
@@ -93,32 +65,45 @@ def sem_init():
 
 
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
-
+    
     def handle(self):
         global count
-        global server
         global nbDock
-        global next_max
         global portC
+        global next_max
         global clientD
-        
+        global delta_Moy
+        global t1_after_stop_docker
+        global t2_after_stop_docker
+        global atom
+
         count += 1
-        print(portC+(count%nbDock)+1)
+        t2_after_stop_docker = time.time()
         data = self.request.recv(1024)
-        # print("read - ",end=' ')
-        # print(data)
-        ret,nbDock,next_max = send_msg(data,portC+(count%nbDock)+1, nbDock, next_max, portC, clientD)
-        # if(ret >= 0):
-        #     nbDock = d
-        #     next_max = m
-        # print(nbDock,next_max)
-        # if count%3 == 0:
-        #     ret = send_msg(data,portW)
-        # else :
-        #     if count%3 == 1:
-        #         ret = send_msg(data,portW2)
-        #     else:
-        #         ret = send_msg(data,portW3)
+        ret,delta = send_msg(data,portC+(count%nbDock)+1)
+        delta_Moy.append(delta)
+        delta_Moy_calc = sum(delta_Moy)/len(delta_Moy)
+        print(delta_Moy_calc)
+        if(len(delta_Moy)>5):
+            delta_Moy.pop(0)
+        if(delta_Moy_calc > next_max):# and t2_after_stop_docker - t1_after_stop_docker > 60):
+            print(nbDock, next_max,portC+2+nbDock, count)
+            
+            next_max = next_max + 3
+            clientD.containers.run("python:vsr",f'python3 worker.py {portC+2+nbDock}',remove=True, ports={portC+2+nbDock:portC+2+nbDock}, detach=True)
+            nbDock = nbDock + 1
+            print(nbDock, next_max,portC+2+nbDock, count)
+            
+        if( delta_Moy_calc < (next_max - 5) and nbDock >= 2 and not atom):
+            atom = True
+            next_max = next_max - 3
+            docker_list = clientD.containers.list(ignore_removed = True)
+            clientD.api.stop( docker_list[0].id, timeout= None)
+            nbDock = nbDock - 1
+            print("remove Docker")
+            # t1_after_stop_docker = t2_after_stop_docker
+            atom = False
+        
         if data == b'quit':
             os._exit(0)
         else:
@@ -129,13 +114,25 @@ class ThreadedTCPServer(socketserver.ThreadingMixIn, socketserver.TCPServer):
 
 def main():
     global server
+    global portC
+    global clientD
+
 
     sem_init()
     
     count = 0
     
     
-    
+    try:
+        portC = int(sys.argv[1])
+    except:
+        portC = 9090
+    clientD = docker.from_env()
+    print(portC)
+    print(f'python3 worker.py {portC+1}')
+    clientD.containers.run("python:vsr",f'python3 worker.py {portC+1}',remove=True, ports={portC+1:portC+1}, detach=True)
+    clientD.containers.run("python:vsr",f'python3 worker.py {portC+2}',remove=True, ports={portC+2:portC+2}, detach=True)
+
 
 
     server = ThreadedTCPServer(('0.0.0.0', portC), ThreadedTCPRequestHandler)

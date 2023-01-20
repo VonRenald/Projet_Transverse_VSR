@@ -9,7 +9,7 @@ try:
 except:
     port = 9090
 
-nb_messages = 30
+nb_messages = 10
 sleeping_time = .1
 
 def send_msg(msg, wait_answer = True):

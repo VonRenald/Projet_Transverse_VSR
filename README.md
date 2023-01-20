@@ -58,6 +58,17 @@ creation dockerfile
 
 
 ```
-docker image build -t python:3 /home/vm/Projet_Transverse_VSR
+docker image build -t python:vsr .
+```
 
+stop all docker
+
+```
+docker stop $(docker ps -q)
+```
+
+
+```
+creation de docker dinamique -> ok
+destruction doquer dinamique -> erreur, probleme de binbing. garder en memeoir le dernier port utiliser pour en creer un apres
 ```
