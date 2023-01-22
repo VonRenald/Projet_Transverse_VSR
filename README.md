@@ -1,7 +1,16 @@
 # ProjetTrasverse Brice WEIS
 
+## Index
 
-## resource 
++ [Ressources](#resources)
++ [Prerequis](#prerequis)
++ [Q0](#q0)
++ [Q1](#q1)
++ [Q2-3](#q2---q3)
++ [Q4](#q4)
++ [Ressource Autre](#ressource-autre)
+
+## Resources 
 [sujet](https://docs.google.com/document/d/11zBVDOXcx6rLfGPptINeEuc0mywJ25OQWXOmVf0NwV4/edit#)
 
 [docker](https://docs.docker.com/engine/)
@@ -10,8 +19,8 @@
 
 [TP](https://moodle.univ-tlse3.fr/pluginfile.php/620348/mod_resource/content/2/M2iLord-virtualization-TPs.pdf)
 
-
-## install docker
+## Prerequis
+### Installation Docker
 
 ```
 sudo apt-get update
@@ -36,8 +45,13 @@ sudo apt-get update
 sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
 ```
 
+### Installation SDK Docker
+```
+pip install docker
+```
 
-## Q1
+
+## Q0
 
 treminal 1:
 
@@ -51,7 +65,9 @@ treminal 2:
 python3 client.py
 ```
 
-## Q2
+les deux programmes communiquent en local et sur le même port
+
+## Q1
 
 creation dockerfile
 
@@ -61,14 +77,35 @@ creation dockerfile
 docker image build -t python:vsr .
 ```
 
-stop all docker
+## Q2 - Q3
+
+### gestion_charge_V1
+
+Repartie la charge des clients sur 3 docker créé à la main préalablement
+
+---
+### gestion_charge_V2
+Repartie la charge des clients sur 3 docker créé au démarrage du programme et affiche le temps de réponse de chaque requête
+
+## Q4
+
+### gestion_charge_V3
+Crée dynamiquement des docker si la latence dépasse un seuil défini à l'avance. Un docker est toujours en "sommeille" afin de rentrer en service dès que le besoin apparait, cela permet de ne pas à attendre le temps de démarrage du docker
+
+la destruction des docker n'est pas implémenté,car des problèmes de libération des ports étaient présents
+
+---
+## gestion_cahrge_C
+
+Version courante du programme, la création et la suppression dynamique des docker est correctement implémenté.
+
+Mais le programme a pour défaut l'utilisation d'un nouveau port à chaque nouveau docker sans limitation, ce qui pourrait entraver le fonctionnement d'autre programme sur la même machine. Mais aussi les docker ouvert ne sont pas automatiquement fermés à la fin du programme
+
+## Ressource Autre
+
+arrêter tous les docker 
 
 ```
 docker stop $(docker ps -q)
 ```
 
-
-```
-creation de docker dinamique -> ok
-destruction doquer dinamique -> erreur, probleme de binbing. garder en memeoir le dernier port utiliser pour en creer un apres
-```
