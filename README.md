@@ -108,4 +108,8 @@ arrêter tous les docker
 ```
 docker stop $(docker ps -q)
 ```
+***
+client V2   : envoie 1000 requête a la suite
+***
+Client End  : envoie un message ```quit```
 
