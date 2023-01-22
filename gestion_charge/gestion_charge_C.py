@@ -12,33 +12,41 @@ import subprocess
 from multiprocessing import Semaphore
 from multiprocessing import Process
 
-
+# +-----------------------------------------+
+# |     Declaration des variables global    |
+# +-----------------------------------------+
 
 sem = None
 serverC = None
 serverW = None
 
-count = 0
+count = 0 # --------nombre de packet traité
 
-portC = 0
-nexPort = 0
-portSleep = 0
-portInUse = []
+portC = 0 # --------port d'entrée des client
+nexPort = 0 # ------porchain port a utiliser pour le docker
+portSleep = 0 # ----port du docker en veille
+portInUse = [] # ---liste des ports actuellement utilisé
 
 nbDock = 1
-next_max = 3
+next_max = 3 # -----valeur du ping a atteindre pour la création du prochain docker
 
-clientD = None
+clientD = None # ---cration du docker
 
-delta_Moy = [0]
+delta_Moy = [0] # --liste des dernier ping pour créer une moyenne
 
-t2_after_stop_docker = time.time()
-t1_after_stop_docker = t2_after_stop_docker - 60
+atom = False # -----zone atomique
 
-atom = False
+# +-----------------------------------------+
+# |         Declaration des fonctions       |
+# +-----------------------------------------+
 
 def send_msg(msg, port, wait_answer = True):
-    
+    # +-----------------------------------------+
+    # |         envoie un  message au port      |
+    # |         demandé, attent la reponse      |
+    # |         et  retourne  la taille du      |
+    # |             msg lus et le ping          |
+    # +-----------------------------------------+
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as client:
 
         client.connect(('127.0.0.1',port))
@@ -51,6 +59,8 @@ def send_msg(msg, port, wait_answer = True):
             delta = t2-t1 
             return response, delta
     return None, 0
+
+
 
 def read_int(filename, default):
     try:
@@ -68,7 +78,9 @@ def sem_init():
 
 
 class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
-    
+    # +-----------------------------------------+
+    # |     fonction appelé a chaque msg        |
+    # +-----------------------------------------+
     def handle(self):
         global count
         global nbDock
@@ -76,39 +88,33 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
         global next_max
         global clientD
         global delta_Moy
-        global t1_after_stop_docker
-        global t2_after_stop_docker
         global atom
         global nexPort
         global portInUse
         global portSleep
 
-        count += 1
-        t2_after_stop_docker = time.time()
-        data = self.request.recv(1024)
-        ret,delta = send_msg(data,portInUse[count%len(portInUse)])
-        delta_Moy.append(delta)
-        delta_Moy_calc = sum(delta_Moy)/len(delta_Moy)
+        count += 1  # ------------------------------------------------additione le compteur de message
+        data = self.request.recv(1024) # -----------------------------lis le msg
+        ret,delta = send_msg(data,portInUse[count%len(portInUse)]) # -envoie le msg au bon worker
+        delta_Moy.append(delta) #-------------------------------------ajout le lag a la memoire
+        delta_Moy_calc = sum(delta_Moy)/len(delta_Moy) # -------------calcule le lag moyen
         print(delta_Moy_calc)
-        if(len(delta_Moy)>5):
+        if(len(delta_Moy)>5): # --------------------------------------ne garde que les 5 dernier lag
             delta_Moy.pop(0)
-        if(delta_Moy_calc > next_max and not atom):# and t2_after_stop_docker - t1_after_stop_docker > 60):
-            atom = True
-            # print(nbDock, next_max,portC+2+nbDock, count)
-            
+        if(delta_Moy_calc > next_max and not atom): # ----------------le lag depace la valeur critique
+            atom = True # --------------------------------------------entree zone atomique            
 
-            next_max = next_max + 3
+            next_max = next_max + 3 # --------------------------------augmente la valeur de la prochaine zone critique
+            portInUse.append(portSleep) # ----------------------------le docker en veille passe actif
             print("start Docker")
-            clientD.containers.run("python:vsr",f'python3 worker.py {nexPort}',remove=True, ports={nexPort:nexPort}, detach=True)
+            clientD.containers.run("python:vsr",f'python3 worker.py {nexPort}', remove=True, ports={nexPort:nexPort}, detach=True) # cree un nouveau docker
             print("Docker started")
-            portInUse.append(portSleep)
             portSleep = nexPort
             nexPort += 1
             nbDock = nbDock + 1
-            # print(nbDock, next_max,portC+2+nbDock, count)
-            atom = False
+            atom = False # -------------------------------------------sortie zone atomique
             
-        if( delta_Moy_calc < (next_max - 5) and nbDock >= 2 and not atom):
+        if( delta_Moy_calc < (next_max - 5) and nbDock >= 2 and not atom): # si la valeur du lag a suffisament baisser et qu'il reste plus de 1 docker
             atom = True
             print("stop Docker")
             next_max = next_max - 3
@@ -118,7 +124,6 @@ class ThreadedTCPRequestHandler(socketserver.BaseRequestHandler):
             portInUse.pop(len(portInUse)-1)
             nbDock = nbDock - 1
             print("Docker closed")
-            # t1_after_stop_docker = t2_after_stop_docker
             atom = False
         
         if data == b'quit':
@@ -146,14 +151,19 @@ def main():
         portC = int(sys.argv[1])
     except:
         portC = 9090
+
     clientD = docker.from_env()
     nexPort = portC + 3
     portSleep = portC + 2
     portInUse.append(portC+1)
+    
     print(portC)
     print(f'python3 worker.py {portC+1}')
-    clientD.containers.run("python:vsr",f'python3 worker.py {portC+1}',remove=True, ports={portC+1:portC+1}, detach=True)
-    clientD.containers.run("python:vsr",f'python3 worker.py {portC+2}',remove=True, ports={portC+2:portC+2}, detach=True)
+    
+
+    # un docker est gardé en avance affin qu'il sois de suite utilisé, et ne pas devoir attendre la création d'un nouveau 
+    clientD.containers.run("python:vsr",f'python3 worker.py {portC+1}',remove=True, ports={portC+1:portC+1}, detach=True) # docker utilisé
+    clientD.containers.run("python:vsr",f'python3 worker.py {portC+2}',remove=True, ports={portC+2:portC+2}, detach=True) # docker en veille
 
 
 
@@ -162,7 +172,6 @@ def main():
         server.serve_forever()
     except KeyboardInterrupt:
         pass
-    print("lalala")
     server.shutdown()      
     server.socket.close()
 
