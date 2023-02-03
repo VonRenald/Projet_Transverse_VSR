@@ -2,6 +2,7 @@
 
 ## Index
 
++ [Introduction](#introduction)
 + [Ressources](#resources)
 + [Prerequis](#prerequis)
 + [Q0](#q0)
@@ -10,14 +11,19 @@
 + [Q4](#q4)
 + [Ressource Autre](#ressource-autre)
 
+## Introduction
+
+Dans le cadre de la formation [SECIL](https://secil.univ-tlse3.fr/) du l'[Université Paul Sabatier](https://www.univ-tlse3.fr/),
+nous avons pour objectif de produire des services contenus dans des Dockers devant être questionné par des clients. Le gestionnaire de charge a pour butte de créer, détruire et repartir le trafic entre les différents worker pour maintenir un temps de réponse suffisamment bas. 
+
 ## Resources 
-[sujet](https://docs.google.com/document/d/11zBVDOXcx6rLfGPptINeEuc0mywJ25OQWXOmVf0NwV4/edit#)
+[Sujet](https://docs.google.com/document/d/11zBVDOXcx6rLfGPptINeEuc0mywJ25OQWXOmVf0NwV4/edit#)
 
-[docker](https://docs.docker.com/engine/)
+[Docker](https://docs.docker.com/engine/)
 
-[TP_Lavinal](https://www.irit.fr/~Emmanuel.Lavinal/cours/VSR/)
+[TP Lavinal](https://www.irit.fr/~Emmanuel.Lavinal/cours/VSR/)
 
-[TP](https://moodle.univ-tlse3.fr/pluginfile.php/620348/mod_resource/content/2/M2iLord-virtualization-TPs.pdf)
+[TP Virtualisation](https://moodle.univ-tlse3.fr/pluginfile.php/620348/mod_resource/content/2/M2iLord-virtualization-TPs.pdf)
 
 ## Prerequis
 ### Installation Docker
